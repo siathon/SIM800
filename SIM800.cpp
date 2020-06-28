@@ -1,7 +1,7 @@
 #include "SIM800.h"
 
-SIM800::SIM800(PinName pwr, PinName st):power(pwr), strt(st){
-    simRegistered = false;
+SIM800::SIM800(PinName pwr, PinName st):power(pwr, 0), strt(st, 1){
+    sim_registered = false;
 }
 
 void SIM800::enable(){
@@ -9,6 +9,7 @@ void SIM800::enable(){
 }
 
 void SIM800::disable(){
+    sim_registered = false;
     power = 0;
 }
 
@@ -46,13 +47,14 @@ int SIM800::AT_CREG(uint8_t command_type, bool debug){
 				if(debug){
 					ser.print_output();
 				}
+				clear_data();
 				ser.read_data(data, debug);
 				return 0;
 			}
 			else{
 				if(debug){
 					data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				}
 				return -1;
 			}
@@ -67,13 +69,14 @@ int SIM800::AT_CREG(uint8_t command_type, bool debug){
 					ser.print_output();
 				}
                 
+				clear_data();
 				ser.read_data(data, debug);
 				return 0;
 			}
 			else{
 				if(debug){
 					data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				}
 				return -1;
 			}
@@ -95,12 +98,13 @@ int SIM800::AT_CSQ(uint8_t command_type){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+CSQ: ", 18, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -109,12 +113,13 @@ int SIM800::AT_CSQ(uint8_t command_type){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+CSQ: ", 5, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -132,12 +137,13 @@ int SIM800::AT_SAPBR(uint8_t command_type, int cmd_type, int cid, string con_par
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+SAPBR: ", 42, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -153,13 +159,13 @@ int SIM800::AT_SAPBR(uint8_t command_type, int cmd_type, int cid, string con_par
 				case 0:
 				case 1:
 				case 3:{
-					if(ser.sendCmdAndWaitForResp(cmnd, "OK", 0, 10000) == 0){
+					if(ser.sendCmdAndWaitForResp(cmnd, "OK", 0, 85000) == 0){
 						ser.print_output();
 						return 0;
 					}
 					else{
 						data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 						return -1;
 					}
 				}
@@ -167,12 +173,13 @@ int SIM800::AT_SAPBR(uint8_t command_type, int cmd_type, int cid, string con_par
 				case 2:{
 					if(ser.sendCmdAndWaitForResp(cmnd, "+SAPBR:", -1, 1000) == 0){
 						ser.print_output();
+						clear_data();
 						ser.read_data(data);
 						return 0;
 					}
 					else{
 						data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 						return -1;
 					}
 				}
@@ -278,6 +285,7 @@ int SIM800::AT_HTTPPARA(uint8_t command_type, string http_param_tag, string http
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+HTTPPARA:", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -314,6 +322,7 @@ int SIM800::AT_HTTPDATA(uint8_t command_type, int size, int tm, char* data_buffe
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+HTTPDATA: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -351,7 +360,7 @@ int SIM800::AT_HTTPDATA(uint8_t command_type, int size, int tm, char* data_buffe
 	}
 }
 
-int SIM800::AT_HTTPACTION(uint8_t command_type, int method){
+int SIM800::AT_HTTPACTION(uint8_t command_type, int method, int timeout){
 	char cmnd[20];
 	switch(command_type){
 		case TEST_CMND:{
@@ -359,26 +368,34 @@ int SIM800::AT_HTTPACTION(uint8_t command_type, int method){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+HTTPACTION: ", 5, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
 		case WRITE_CMND:{
 			sprintf(cmnd, "AT+HTTPACTION=%d\r", method);
 			printf("%s\n", cmnd);
-			if(ser.sendCmdAndWaitForResp(cmnd, "OK\r\n+HTTPACTION: ", -1, 5000) == 0){
+			if(ser.sendCmdAndWaitForResp(cmnd, "OK\r\n+HTTPACTION: ", 5, timeout) == 0){
 				ser.print_output();
-				ser.read_data(data);
+                wait_us(100000);
+                string temp_raw(ser.raw_data);
+                int idx = temp_raw.find("+HTTPACTION");
+                temp_raw = temp_raw.substr(idx+13);
+                int idx2 = temp_raw.find('\r\n');
+                for(int i = 0;i < idx2+2;i++){
+                    data[i] = ser.raw_data[idx+13+i];
+                }
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -389,43 +406,39 @@ int SIM800::AT_HTTPACTION(uint8_t command_type, int method){
 }
 
 int SIM800::AT_HTTPREAD(uint8_t command_type, int* data_len, char* data_buffer, int start_address, int byte_size){
-	char cmnd[30];
+	char cmnd[50];
+    char rspns[50];
 	switch(command_type){
 		case TEST_CMND:{
 			sprintf(cmnd, "AT+HTTPREAD=?\r");
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+HTTPREAD: ", -1, 1000) == 0){
 				ser.print_output();
+                
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
 		case WRITE_CMND:{
 			sprintf(cmnd, "AT+HTTPREAD=%d,%d\r", start_address, byte_size);
+            sprintf(rspns, "+HTTPREAD: %d\r\n", byte_size);
 			printf("%s\n", cmnd);
-			if(ser.sendCmdAndWaitForResp(cmnd, "+HTTPREAD: ", -1, 5000) == 0){
-				ser.read_data(data);
-				string temp(data);
-				int idx = temp.find("\r\n");
-				string len = temp.substr(0, idx);
-				int _data_len = string_to_int(len);
-				*data_len = _data_len;
-				for(int i = 0; i < _data_len; i++){
-					data_buffer[i] = data[i+idx+2];
-				}
-				data_buffer[_data_len] = '\0';
+			if(ser.sendCmdAndWaitForResp(cmnd, rspns, byte_size, 5000) == 0){
+				clear_data();
+				ser.read_data(data_buffer, false);
 				ser.print_output();
 				printf("OK\n");
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -433,6 +446,7 @@ int SIM800::AT_HTTPREAD(uint8_t command_type, int* data_len, char* data_buffer, 
 			sprintf(cmnd, "AT+HTTPREAD\r");
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+HTTPREAD: ", -1, 5000) == 0){
+				clear_data();
 				ser.read_data(data);
 				string temp(data);
 				int idx = temp.find("\r\n");
@@ -448,7 +462,7 @@ int SIM800::AT_HTTPREAD(uint8_t command_type, int* data_len, char* data_buffer, 
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -479,6 +493,7 @@ int SIM800::AT_FTPTYPE(uint8_t command_type, char value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPTYPE: ", 1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -528,6 +543,7 @@ int SIM800::AT_FTPCID(uint8_t command_type, int value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPCID: ", 1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -577,6 +593,7 @@ int SIM800::AT_FTPSERV(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPSERV: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -626,6 +643,7 @@ int SIM800::AT_FTPPORT(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPPORT: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -675,6 +693,7 @@ int SIM800::AT_FTPUN(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPUN: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -724,6 +743,7 @@ int SIM800::AT_FTPPW(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPPW: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -773,6 +793,7 @@ int SIM800::AT_FTPGETNAME(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPGETNAME: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -822,6 +843,7 @@ int SIM800::AT_FTPGETPATH(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPGETPATH: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -862,7 +884,7 @@ int SIM800::AT_FTPPUTNAME(uint8_t command_type, string value){
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -871,12 +893,13 @@ int SIM800::AT_FTPPUTNAME(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPPUTNAME: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -889,7 +912,7 @@ int SIM800::AT_FTPPUTNAME(uint8_t command_type, string value){
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -920,6 +943,7 @@ int SIM800::AT_FTPPUTPATH(uint8_t command_type, string value){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPPUTPATH: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -969,6 +993,7 @@ int SIM800::AT_FTPSIZE(uint8_t command_type, int* size){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+FTPSIZE:1,0,", -1, 10000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				string temp(data);
 				int idx = temp.find("\r\n");
@@ -1026,6 +1051,7 @@ int SIM800::AT_FTPGET(uint8_t command_type, int mode, int req_length, char* data
 					printf("%s\n", cmnd);
 					if(ser.sendCmdAndWaitForResp(cmnd, rspns, req_length, 5000) == 0){
 						ser.print_output();
+						clear_data();
 						ser.read_data(data_buffer, false);
 						printf("OK\n");
 						return 0;
@@ -1125,12 +1151,13 @@ int SIM800::AT_CMGD(uint8_t command_type, int index, int delflag){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+CMGD: ", -1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -1149,7 +1176,7 @@ int SIM800::AT_CMGD(uint8_t command_type, int index, int delflag){
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -1167,7 +1194,8 @@ int SIM800::AT_CMGF(uint8_t command_type, int mode){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+CMGF:", -1, 1000) == 0){
 				ser.print_output();
-                ser.read_data(data);
+                clear_data();
+				ser.read_data(data);
 				return 0;
 			}
 			else{
@@ -1181,6 +1209,7 @@ int SIM800::AT_CMGF(uint8_t command_type, int mode){
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+CMGF: ", 1, 1000) == 0){
 				ser.print_output();
+				clear_data();
 				ser.read_data(data);
 				return 0;
 			}
@@ -1209,7 +1238,7 @@ int SIM800::AT_CMGF(uint8_t command_type, int mode){
 	}
 }
 
-int SIM800::AT_CMGR(uint8_t command_type, int index, int mode){
+int SIM800::AT_CMGR(uint8_t command_type, int index){
     char cmnd[20];
 	switch(command_type){
 		case TEST_CMND:{
@@ -1221,21 +1250,22 @@ int SIM800::AT_CMGR(uint8_t command_type, int index, int mode){
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
 		case WRITE_CMND:{
-			sprintf(cmnd, "AT+CMGR=%d,%d\r", index, mode);
+			sprintf(cmnd, "AT+CMGR=%d\r", index);
 			printf("%s\n", cmnd);
 			if(ser.sendCmdAndWaitForResp(cmnd, "+CMGR: ", -1, 5000) == 0){
 				ser.print_output();
-                ser.read_data(data);
+                clear_data();
+				ser.read_data(data);
 				return 0;
 			}
 			else{
 				data[0] = '\0';
-		ser.print_error();
+		        ser.print_error();
 				return -1;
 			}
 		}
@@ -1270,7 +1300,8 @@ int SIM800::AT_CMGS(uint8_t command_type, string phone_number, string message){
                 printf("%s\n", text);
 				if(ser.sendCmdAndWaitForResp(text, "+CMGS: ", -1, 10000) == 0){
                     ser.print_output();
-                    ser.read_data(data);
+                    clear_data();
+				    ser.read_data(data);
                     return 0;
                 }
                 else{
@@ -1291,6 +1322,123 @@ int SIM800::AT_CMGS(uint8_t command_type, string phone_number, string message){
 	}
 }
 
+int SIM800::AT_CSMP(uint8_t command_type, int fo, int vp, int pid, int dcs){
+    char cmnd[100];
+	switch(command_type){
+		case TEST_CMND:{
+			sprintf(cmnd, "AT+CSMP=?\r");
+			printf("%s\n", cmnd);
+			if(ser.sendCmdAndWaitForResp(cmnd, "+CSMP: ", -1, 1000) == 0){
+				ser.print_output();
+                clear_data();
+				ser.read_data(data);
+				return 0;
+			}
+			else{
+				data[0] = '\0';
+		        ser.print_error();
+				return -1;
+			}
+		}
+		case READ_CMND:{
+			sprintf(cmnd, "AT+CSMP?\r");
+			printf("%s\n", cmnd);
+			if(ser.sendCmdAndWaitForResp(cmnd, "+CSMP: ", -1, 1000) == 0){
+				ser.print_output();
+				clear_data();
+				ser.read_data(data);
+				return 0;
+			}
+			else{
+				data[0] = '\0';
+		        ser.print_error();
+				return -1;
+			}
+		}
+		case WRITE_CMND:{
+			sprintf(cmnd, "AT+CSMP=%d,%d,%d,%d\r", fo, vp, pid, dcs);
+			printf("%s\n", cmnd);
+			if(ser.sendCmdAndWaitForResp(cmnd, "OK", 0, 1000) == 0){
+				ser.print_output();
+				return 0;
+			}
+			else{
+				data[0] = '\0';
+		        ser.print_error();
+				return -1;
+			}
+		}
+		default:
+			printf("Invalid command type");
+			return -3;
+	}
+}
+
+int SIM800::AT_CUSD(uint8_t command_type, int n, string str){
+    char cmnd[100];
+	switch(command_type){
+		case TEST_CMND:{
+			sprintf(cmnd, "AT+CUSD=?\r");
+			printf("%s\n", cmnd);
+			if(ser.sendCmdAndWaitForResp(cmnd, "+CUSD: ", -1, 1000) == 0){
+				ser.print_output();
+                clear_data();
+				ser.read_data(data);
+				return 0;
+			}
+			else{
+				data[0] = '\0';
+		        ser.print_error();
+				return -1;
+			}
+		}
+		case READ_CMND:{
+			sprintf(cmnd, "AT+CUSD?\r");
+			printf("%s\n", cmnd);
+			if(ser.sendCmdAndWaitForResp(cmnd, "+CUSD: ", 1, 1000) == 0){
+				ser.print_output();
+				clear_data();
+				ser.read_data(data);
+				return 0;
+			}
+			else{
+				data[0] = '\0';
+		        ser.print_error();
+				return -1;
+			}
+		}
+		case WRITE_CMND:{
+            if(str.length() == 0){
+                sprintf(cmnd, "AT+CUSD=%d\r", n);
+            }
+            else{
+                sprintf(cmnd, "AT+CUSD=%d,\"%s\"\r", n, str.c_str());
+            }
+			printf("%s\n", cmnd);
+			if(ser.sendCmdAndWaitForResp(cmnd, "+CUSD: ", -1, 10000) == 0){
+				ser.print_output();
+                clear_data();
+                ser.read_data(data);
+				return 0;
+			}
+			else{
+				data[0] = '\0';
+		        ser.print_error();
+				return -1;
+			}
+		}
+		default:
+			printf("Invalid command type");
+			return -3;
+	}
+}
+
+void SIM800::clear_data(){
+    for(int i = 0;i < DATA_BUFFER_SIZE;i++){
+        data[i] = '\0';
+    }
+}
+
 int SIM800::string_to_int(string s){
     int indx = s.find('.');
     if (indx != -1) {
@@ -1308,3 +1456,4 @@ int SIM800::string_to_int(string s){
         t += (s[i] - '0') * pow(10.0, l - i - 1);
     return (int)(neg * t);
 }
+
